@@ -1,0 +1,1584 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1a1a1a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Secure Vault</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        /* Основные стили */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #1a1a1a;
+            --bg-card: #262626;
+            --text-primary: #ffffff;
+            --text-secondary: #a3a3a3;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --border: #404040;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+        .app {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            padding: 20px;
+            padding-top: 40px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .header-actions {
+            display: flex;
+            gap: 15px;
+        }
+        .header-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .header-btn:active {
+            transform: scale(0.9);
+            background: rgba(255,255,255,0.3);
+        }
+        /* Search */
+        .search-container {
+            position: relative;
+            margin-top: 10px;
+        }
+        .search-input {
+            width: 100%;
+            padding: 12px 45px 12px 20px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 25px;
+            color: white;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s;
+        }
+        .search-input::placeholder {
+            color: rgba(255,255,255,0.5);
+        }
+        .search-input:focus {
+            background: rgba(255,255,255,0.15);
+            border-color: rgba(255,255,255,0.3);
+        }
+        .search-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0.5;
+        }
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            padding-bottom: 80px;
+        }
+        /* Секции и сетки */
+        .section {
+            margin-bottom: 30px;
+        }
+        .section-title {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .folders-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+        .documents-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        /* Карточки папок и документов */
+        .folder-card,
+        .document-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid transparent;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+        }
+        .folder-card:active,
+        .document-card:active {
+            transform: scale(0.95);
+        }
+        .folder-card.vault {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border: none;
+        }
+        .folder-icon,
+        .document-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        .folder-name,
+        .document-name {
+            font-size: 14px;
+            text-align: center;
+            word-break: break-word;
+        }
+        .folder-count,
+        .document-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .document-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+            width: 100%;
+        }
+        .document-info {
+            flex: 1;
+        }
+        .document-type {
+            position: absolute;
+            bottom: -5px;
+            right: -5px;
+            background: var(--primary);
+            color: white;
+            font-size: 10px;
+            padding: 2px 5px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+        /* Защищенные документы */
+        .document-card.encrypted {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+            border: 1px solid rgba(99, 102, 241, 0.3);
+        }
+        .document-card.encrypted .document-icon {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 12px;
+        }
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg-secondary);
+            padding: 15px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+            border-top: 1px solid var(--border);
+        }
+        .nav-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            padding: 5px 20px;
+        }
+        .nav-btn:active {
+            transform: scale(0.9);
+        }
+        .nav-btn.primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            border-radius: 25px;
+            padding: 12px 30px;
+            flex-direction: row;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(99,102,241,0.3);
+        }
+        .nav-btn-icon {
+            font-size: 24px;
+        }
+        .nav-btn-text {
+            font-size: 12px;
+        }
+        /* Modals */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            padding: 25px;
+            width: 100%;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 24px;
+            cursor: pointer;
+        }
+        /* Forms */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s;
+        }
+        .form-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+        }
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            margin-top: 10px;
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+        /* File Input */
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+        .file-input {
+            position: absolute;
+            left: -9999px;
+        }
+        .file-input-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            background: var(--bg-card);
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .file-input-label:hover {
+            border-color: var(--primary);
+            background: rgba(99,102,241,0.1);
+        }
+        /* PIN Input */
+        .pin-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 30px 0;
+        }
+        .pin-input {
+            width: 50px;
+            height: 60px;
+            text-align: center;
+            font-size: 24px;
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            outline: none;
+        }
+        .pin-input:focus {
+            border-color: var(--primary);
+        }
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+        }
+        .empty-icon {
+            font-size: 64px;
+            opacity: 0.3;
+            margin-bottom: 20px;
+        }
+        .empty-text {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--bg-card);
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 2000;
+        }
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        /* Контекстное меню */
+        .context-menu {
+            position: fixed;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 8px 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            z-index: 3000;
+            display: none;
+            min-width: 180px;
+        }
+        .context-menu.active {
+            display: block;
+        }
+        .context-menu-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s;
+        }
+        .context-menu-item:hover {
+            background: var(--bg-card);
+        }
+        .context-menu-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 8px 0;
+        }
+        /* Кнопка удаления папки */
+        .delete-folder-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: var(--danger);
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .folder-card:hover .delete-folder-btn {
+            opacity: 0.8;
+        }
+        /* Полноэкранный просмотр изображений */
+        .fullscreen-image {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 4000;
+            padding: 20px;
+        }
+        .fullscreen-image img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .fullscreen-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        /* Loading (если понадобится) */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+  <div class="app">
+      <!-- Header -->
+      <div class="header">
+          <div class="header-content">
+              <h1>Secure Vault</h1>
+              <div class="header-actions">
+                  <button class="header-btn" onclick="app.showPinModal()">
+                      <span>🔒</span>
+                  </button>
+                  <button class="header-btn" onclick="app.sortDocuments()">
+                      <span>📊</span>
+                  </button>
+              </div>
+          </div>
+          <div class="search-container">
+              <input type="text" class="search-input" placeholder="Поиск документов..." onkeyup="app.search(this.value)">
+              <span class="search-icon">🔍</span>
+          </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="main-content" id="mainContent">
+          <!-- Контент отрисовывается динамически -->
+      </div>
+
+      <!-- Bottom Navigation -->
+      <div class="bottom-nav">
+          <button class="nav-btn" onclick="app.showNewFolderModal()">
+              <span class="nav-btn-icon">📁</span>
+              <span class="nav-btn-text">Папка</span>
+          </button>
+          <button class="nav-btn primary" onclick="app.showUploadModal()">
+              <span class="nav-btn-icon">➕</span>
+              <span class="nav-btn-text">Добавить</span>
+          </button>
+          <button class="nav-btn" onclick="app.showMenu()">
+              <span class="nav-btn-icon">☰</span>
+              <span class="nav-btn-text">Меню</span>
+          </button>
+      </div>
+  </div>
+
+  <!-- Контекстное меню -->
+  <div class="context-menu" id="contextMenu">
+      <div class="context-menu-item" onclick="app.contextMenuAction('open')">
+          <span>👁️</span> Открыть
+      </div>
+      <div class="context-menu-item" onclick="app.contextMenuAction('download')">
+          <span>💾</span> Скачать
+      </div>
+      <div class="context-menu-item" onclick="app.contextMenuAction('share')">
+          <span>📤</span> Поделиться
+      </div>
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-item" onclick="app.contextMenuAction('delete')" style="color: var(--danger);">
+          <span>🗑️</span> Удалить
+      </div>
+  </div>
+
+  <!-- Модальные окна -->
+  <!-- Upload Modal -->
+  <div class="modal" id="uploadModal">
+      <div class="modal-content">
+          <div class="modal-header">
+              <h2 class="modal-title">Добавить документ</h2>
+              <button class="modal-close" onclick="app.closeModal('uploadModal')">✕</button>
+          </div>
+          <div class="form-group">
+              <label class="form-label">Выберите папку</label>
+              <select class="form-input" id="folderSelect">
+                  <option value="">Главная</option>
+                  <option value="vault">🔐 Сейф</option>
+              </select>
+          </div>
+          <div class="form-group">
+              <div class="file-input-wrapper">
+                  <input type="file" class="file-input" id="fileInput" multiple accept="image/*,.pdf,.txt,.doc,.docx,.xls,.xlsx">
+                  <label for="fileInput" class="file-input-label">
+                      <span>📎</span>
+                      <span>Выберите файлы</span>
+                  </label>
+              </div>
+          </div>
+          <button class="btn btn-primary" onclick="app.uploadFiles()">Загрузить</button>
+      </div>
+  </div>
+
+  <!-- New Folder Modal -->
+  <div class="modal" id="newFolderModal">
+      <div class="modal-content">
+          <div class="modal-header">
+              <h2 class="modal-title">Новая папка</h2>
+              <button class="modal-close" onclick="app.closeModal('newFolderModal')">✕</button>
+          </div>
+          <div class="form-group">
+              <label class="form-label">Название папки</label>
+              <input type="text" class="form-input" id="folderName" placeholder="Введите название">
+          </div>
+          <button class="btn btn-primary" onclick="app.createFolder()">Создать</button>
+      </div>
+  </div>
+
+  <!-- PIN Modal -->
+  <div class="modal" id="pinModal">
+      <div class="modal-content">
+          <div class="modal-header">
+              <h2 class="modal-title">Введите PIN</h2>
+              <button class="modal-close" onclick="app.closeModal('pinModal')">✕</button>
+          </div>
+          <div class="pin-container">
+              <input type="number" class="pin-input" id="pin1" onkeyup="app.handlePinInput(1)" placeholder="•">
+              <input type="number" class="pin-input" id="pin2" onkeyup="app.handlePinInput(2)" placeholder="•">
+              <input type="number" class="pin-input" id="pin3" onkeyup="app.handlePinInput(3)" placeholder="•">
+              <input type="number" class="pin-input" id="pin4" onkeyup="app.handlePinInput(4)" placeholder="•">
+          </div>
+          <button class="btn btn-primary" onclick="app.checkPin()">Войти</button>
+      </div>
+  </div>
+
+  <!-- Menu Modal -->
+  <div class="modal" id="menuModal">
+      <div class="modal-content">
+          <div class="modal-header">
+              <h2 class="modal-title">Меню</h2>
+              <button class="modal-close" onclick="app.closeModal('menuModal')">✕</button>
+          </div>
+          <button class="btn btn-secondary" onclick="app.exportData()">
+              <span>💾</span> Экспорт данных
+          </button>
+          <button class="btn btn-secondary" onclick="app.showImportModal()">
+              <span>📥</span> Импорт данных
+          </button>
+          <button class="btn btn-secondary" onclick="app.showClearDataModal()">
+              <span>🗑️</span> Очистить все данные
+          </button>
+          <button class="btn btn-secondary" onclick="app.showAbout()">
+              <span>ℹ️</span> О приложении
+          </button>
+      </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+      const app = {
+          db: null,
+          currentFolder: null,
+          vaultUnlocked: false,
+          searchQuery: '',
+          sortBy: 'date',
+          contextMenuTarget: null,
+
+          // Инициализация приложения
+          async init() {
+              await this.initDB();
+              await this.registerServiceWorker();
+              this.render();
+              this.setupEmergencyWipe();
+              this.setupContextMenu();
+          },
+
+          // Инициализация IndexedDB
+          async initDB() {
+              return new Promise((resolve, reject) => {
+                  const request = indexedDB.open('SecureVault', 1);
+                  request.onerror = () => reject(request.error);
+                  request.onsuccess = () => {
+                      this.db = request.result;
+                      resolve();
+                  };
+                  request.onupgradeneeded = (event) => {
+                      const db = event.target.result;
+                      if (!db.objectStoreNames.contains('documents')) {
+                          const store = db.createObjectStore('documents', { keyPath: 'id' });
+                          store.createIndex('folder', 'folder');
+                          store.createIndex('type', 'type');
+                          store.createIndex('date', 'date');
+                      }
+                      if (!db.objectStoreNames.contains('folders')) {
+                          db.createObjectStore('folders', { keyPath: 'id' });
+                      }
+                      if (!db.objectStoreNames.contains('vault')) {
+                          db.createObjectStore('vault', { keyPath: 'id' });
+                      }
+                      if (!db.objectStoreNames.contains('settings')) {
+                          db.createObjectStore('settings', { keyPath: 'key' });
+                      }
+                  };
+              });
+          },
+
+          // Регистрация Service Worker
+          async registerServiceWorker() {
+              if ('serviceWorker' in navigator) {
+                  try {
+                      await navigator.serviceWorker.register('sw.js');
+                  } catch (error) {
+                      console.error('SW registration failed:', error);
+                  }
+              }
+          },
+
+          // Функция поиска, вызываемая при вводе в поле поиска
+          search(query) {
+              this.searchQuery = query;
+              this.render();
+          },
+
+          // Отрисовка интерфейса
+          async render() {
+              const content = document.getElementById('mainContent');
+              const documents = await this.getDocuments();
+              const folders = await this.getFolders();
+              const vaultDocs = await this.getVaultDocuments();
+
+              let html = '';
+
+              // Кнопка "На главную" (если выбрана папка)
+              if (this.currentFolder) {
+                  html += `<div style="margin-bottom:20px;">
+                              <button onclick="app.goHome()" style="background: var(--bg-card); border: none; padding: 10px 20px; border-radius: 12px; color: var(--text-primary); cursor: pointer;">
+                                  ← На главную
+                              </button>
+                          </div>`;
+              }
+
+              // Секция папок (если ни папка не выбрана)
+              if (!this.currentFolder) {
+                  html += `<div class="section">
+                              <h3 class="section-title">Папки</h3>
+                              <div class="folders-grid">
+                                  <div class="folder-card vault" onclick="app.openVault()">
+                                      <div class="folder-icon">🔐</div>
+                                      <div class="folder-name">Сейф</div>
+                                      <div class="folder-count">${this.vaultUnlocked ? 'Открыт' : `${vaultDocs.length} файлов`}</div>
+                                  </div>`;
+                  folders.forEach(folder => {
+                      const count = documents.filter(d => d.folder === folder.id).length;
+                      html += `<div class="folder-card" onclick="app.openFolder('${folder.id}')" oncontextmenu="app.showFolderMenu(event, '${folder.id}')">
+                                  <button class="delete-folder-btn" onclick="event.stopPropagation(); app.deleteFolder('${folder.id}')">×</button>
+                                  <div class="folder-icon">📁</div>
+                                  <div class="folder-name">${folder.name}</div>
+                                  <div class="folder-count">${count} файлов</div>
+                               </div>`;
+                  });
+                  html += `</div>
+                           </div>`;
+              }
+
+              // Фильтрация документов с учетом поиска
+              let visibleDocs = [];
+              if (this.searchQuery && this.searchQuery.trim().length > 0) {
+                  if (this.currentFolder === 'vault') {
+                      if (this.vaultUnlocked) {
+                          visibleDocs = vaultDocs.filter(d => d.name.toLowerCase().includes(this.searchQuery.toLowerCase()));
+                      } else {
+                          visibleDocs = [];
+                      }
+                  } else {
+                      visibleDocs = documents.filter(d => d.name.toLowerCase().includes(this.searchQuery.toLowerCase()));
+                  }
+              } else {
+                  if (this.currentFolder) {
+                      if (this.currentFolder === 'vault') {
+                          if (this.vaultUnlocked) {
+                              visibleDocs = vaultDocs;
+                          } else {
+                              visibleDocs = [];
+                          }
+                      } else {
+                          visibleDocs = documents.filter(d => d.folder === this.currentFolder);
+                      }
+                  } else {
+                      visibleDocs = documents.filter(d => !d.folder);
+                  }
+              }
+
+              // Сортировка документов
+              visibleDocs.sort((a, b) => {
+                  if (this.sortBy === 'date') {
+                      return b.date - a.date;
+                  } else {
+                      return a.type.localeCompare(b.type);
+                  }
+              });
+
+              // Отрисовка документов
+              if (visibleDocs.length > 0) {
+                  html += `<div class="section">
+                              <h3 class="section-title">Документы</h3>
+                              <div class="documents-grid">`;
+                  visibleDocs.forEach(doc => {
+                      const icon = this.getFileIcon(doc.type);
+                      const date = new Date(doc.date).toLocaleDateString();
+                      const isEncrypted = doc.encrypted || this.currentFolder === 'vault';
+                      html += `<div class="document-card ${isEncrypted ? 'encrypted' : ''}" onclick="app.openDocument('${doc.id}')" oncontextmenu="app.showDocumentMenu(event, '${doc.id}')">
+                                  <div class="document-header">
+                                      <div class="document-icon" style="position: relative;">
+                                          <span>${icon}</span>
+                                          <span class="document-type">${doc.type.toUpperCase()}</span>
+                                      </div>
+                                      <div class="document-info">
+                                          <div class="document-name">${doc.name}</div>
+                                          <div class="document-meta">${date} • ${this.formatFileSize(doc.size)}</div>
+                                      </div>
+                                  </div>
+                                  <button class="delete-btn" onclick="event.stopPropagation(); app.deleteDocument('${doc.id}')" style="position: absolute; top: 10px; right: 10px; background: var(--danger); border: none; width: 30px; height: 30px; border-radius: 50%; color: white; cursor: pointer;">×</button>
+                               </div>`;
+                  });
+                  html += `   </div>
+                           </div>`;
+              } else if (!folders.length && !this.currentFolder) {
+                  html = `<div class="empty-state">
+                              <div class="empty-icon">📄</div>
+                              <div class="empty-text">Нет документов</div>
+                          </div>`;
+              }
+              content.innerHTML = html;
+              this.updateFolderSelector();
+          },
+
+          // Загрузка файлов
+          async uploadFiles() {
+              const fileInput = document.getElementById('fileInput');
+              const folderSelect = document.getElementById('folderSelect');
+              const files = fileInput.files;
+              if (!files.length) {
+                  this.showToast('Выберите файлы');
+                  return;
+              }
+              if (folderSelect.value === 'vault' && !this.vaultUnlocked) {
+                  this.showToast('Сначала откройте Сейф');
+                  return;
+              }
+              for (const file of files) {
+                  const reader = new FileReader();
+                  reader.onload = async (e) => {
+                      const doc = {
+                          id: Date.now() + '_' + Math.random(),
+                          name: file.name,
+                          type: this.getFileType(file.name),
+                          size: file.size,
+                          data: e.target.result,
+                          folder: folderSelect.value || null,
+                          date: Date.now()
+                      };
+                      if (folderSelect.value === 'vault') {
+                          await this.saveToVault(doc);
+                      } else {
+                          await this.saveDocument(doc);
+                      }
+                  };
+                  reader.readAsDataURL(file);
+              }
+              this.closeModal('uploadModal');
+              this.showToast('Файлы загружены');
+              setTimeout(() => this.render(), 100);
+          },
+
+          async saveToVault(doc) {
+              doc.encrypted = true;
+              const transaction = this.db.transaction(['vault'], 'readwrite');
+              const store = transaction.objectStore('vault');
+              await store.add(doc);
+          },
+
+          async saveDocument(doc) {
+              const transaction = this.db.transaction(['documents'], 'readwrite');
+              const store = transaction.objectStore('documents');
+              await store.add(doc);
+          },
+
+          async getDocuments() {
+              return new Promise((resolve, reject) => {
+                  const transaction = this.db.transaction(['documents'], 'readonly');
+                  const store = transaction.objectStore('documents');
+                  const request = store.getAll();
+                  request.onsuccess = () => resolve(request.result);
+                  request.onerror = () => reject(request.error);
+              });
+          },
+
+          async getVaultDocuments() {
+              return new Promise((resolve, reject) => {
+                  const transaction = this.db.transaction(['vault'], 'readonly');
+                  const store = transaction.objectStore('vault');
+                  const request = store.getAll();
+                  request.onsuccess = () => resolve(request.result);
+                  request.onerror = () => reject(request.error);
+              });
+          },
+
+          // Открытие документа
+          async openDocument(id) {
+              const transaction = this.db.transaction(['documents', 'vault'], 'readonly');
+              const docStore = transaction.objectStore('documents');
+              const vaultStore = transaction.objectStore('vault');
+              let req = docStore.get(id);
+              req.onsuccess = () => {
+                  let doc = req.result;
+                  if (!doc) {
+                      const vaultReq = vaultStore.get(id);
+                      vaultReq.onsuccess = () => {
+                          doc = vaultReq.result;
+                          if (doc) this.showDocumentPreview(doc);
+                      };
+                  } else {
+                      this.showDocumentPreview(doc);
+                  }
+              };
+          },
+
+          // Предпросмотр документа
+          showDocumentPreview(doc) {
+              const modal = document.createElement('div');
+              modal.className = 'modal active';
+              modal.style.zIndex = '2000';
+              let previewContent = "";
+              
+              if (['jpg','jpeg','png','gif'].includes(doc.type)) {
+                  previewContent = `<img src="${doc.data}" alt="${doc.name}" style="max-width:100%; max-height:400px; object-fit:contain; cursor: pointer;" onclick="app.showFullscreenImage('${doc.data}')">
+                                    <p style="text-align: center; color: var(--text-secondary); margin-top: 10px;">Нажмите для полноэкранного просмотра</p>`;
+              } else if (doc.type === 'pdf') {
+                  // Для мобильных устройств используем другой подход
+                  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                  if (isMobile) {
+                      previewContent = `<div style="text-align:center; padding:40px;">
+                                          <div style="font-size:64px; margin-bottom:20px;">📄</div>
+                                          <div>PDF файл: ${doc.name}</div>
+                                          <div style="margin-top:10px; color: var(--text-secondary); font-size:14px;">Размер: ${this.formatFileSize(doc.size)}</div>
+                                          <p style="margin-top:20px; color: var(--text-secondary);">На мобильных устройствах PDF открывается через скачивание</p>
+                                        </div>`;
+                  } else {
+                      previewContent = `<embed src="${doc.data}" type="application/pdf" style="width:100%; height:400px;">`;
+                  }
+              } else if (doc.type === 'txt') {
+                  try {
+                      const base64Data = doc.data.split(',')[1];
+                      const text = atob(base64Data);
+                      const decodedText = decodeURIComponent(escape(text));
+                      previewContent = `<pre style="background: var(--bg-card); padding:20px; border-radius:12px; overflow:auto; max-height:400px; white-space:pre-wrap;">${decodedText}</pre>`;
+                  } catch (e) {
+                      previewContent = `<div style="text-align:center; padding:40px;">Ошибка при чтении файла</div>`;
+                  }
+              } else if (['doc','docx','xls','xlsx'].includes(doc.type)) {
+                  previewContent = `<div style="text-align:center; padding:40px;">
+                                        <div style="font-size:64px; margin-bottom:20px;">${this.getFileIcon(doc.type)}</div>
+                                        <div>Для просмотра ${doc.type.toUpperCase()} файла скачайте документ</div>
+                                        <div style="margin-top:10px; color: var(--text-secondary); font-size:14px;">Размер: ${this.formatFileSize(doc.size)}</div>
+                                    </div>`;
+              } else {
+                  previewContent = `<div style="text-align:center; padding:40px;">
+                                        <div style="font-size:64px; margin-bottom:20px;">${this.getFileIcon(doc.type)}</div>
+                                        <div>Предпросмотр недоступен</div>
+                                    </div>`;
+              }
+              
+              modal.innerHTML = `
+                  <div class="modal-content" style="max-width:600px;">
+                      <div class="modal-header">
+                          <h2 class="modal-title">${doc.name}</h2>
+                          <button class="modal-close" onclick="this.closest('.modal').remove()">✕</button>
+                      </div>
+                      <div style="margin:20px 0;">${previewContent}</div>
+                      <div style="display: flex; gap: 10px;">
+                          ${doc.type === 'pdf' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 
+                            `<button class="btn btn-primary" onclick="app.openPdfInNewTab('${doc.data}', '${doc.name}')">
+                                <span>👁️</span> Просмотр
+                            </button>` : ''}
+                          <button class="btn btn-primary" onclick="app.downloadDocument('${doc.id}')">
+                              <span>💾</span> Скачать
+                          </button>
+                          <button class="btn btn-secondary" onclick="app.shareDocument('${doc.id}')">
+                              <span>📤</span> Поделиться
+                          </button>
+                          <button class="btn btn-secondary" style="background: var(--danger);" onclick="app.deleteDocument('${doc.id}'); this.closest('.modal').remove()">
+                              <span>🗑️</span> Удалить
+                          </button>
+                      </div>
+                  </div>
+              `;
+              document.body.appendChild(modal);
+          },
+
+          // Полноэкранный просмотр изображений
+          showFullscreenImage(src) {
+              const fullscreen = document.createElement('div');
+              fullscreen.className = 'fullscreen-image';
+              fullscreen.innerHTML = `
+                  <img src="${src}" alt="Fullscreen">
+                  <button class="fullscreen-close" onclick="this.parentElement.remove()">✕</button>
+              `;
+              fullscreen.onclick = (e) => {
+                  if (e.target === fullscreen) {
+                      fullscreen.remove();
+                  }
+              };
+              document.body.appendChild(fullscreen);
+          },
+
+          // Открытие PDF в новой вкладке для мобильных
+          openPdfInNewTab(data, name) {
+              const newWindow = window.open();
+              newWindow.document.write(`
+                  <!DOCTYPE html>
+                  <html>
+                  <head>
+                      <title>${name}</title>
+                      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                      <style>
+                          body { margin: 0; padding: 0; overflow: hidden; }
+                          iframe { width: 100vw; height: 100vh; border: none; }
+                      </style>
+                  </head>
+                  <body>
+                      <iframe src="${data}"></iframe>
+                  </body>
+                  </html>
+              `);
+          },
+
+          async downloadDocument(id) {
+              const transaction = this.db.transaction(['documents', 'vault'], 'readonly');
+              const docStore = transaction.objectStore('documents');
+              const vaultStore = transaction.objectStore('vault');
+              let req = docStore.get(id);
+              req.onsuccess = () => {
+                  let doc = req.result;
+                  if (!doc) {
+                      const vaultReq = vaultStore.get(id);
+                      vaultReq.onsuccess = () => {
+                          doc = vaultReq.result;
+                          if (doc) this.performDownload(doc);
+                      };
+                  } else {
+                      this.performDownload(doc);
+                  }
+              };
+          },
+
+          async performDownload(doc) {
+              // Специальная обработка для PDF на мобильных
+              if (doc.type === 'pdf' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                  // Открываем PDF в новой вкладке
+                  const newWindow = window.open();
+                  newWindow.document.write(`
+                      <!DOCTYPE html>
+                      <html>
+                      <head>
+                          <title>${doc.name}</title>
+                          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                          <style>
+                              body { margin: 0; padding: 0; }
+                              iframe { width: 100vw; height: 100vh; border: none; }
+                          </style>
+                      </head>
+                      <body>
+                          <iframe src="${doc.data}"></iframe>
+                      </body>
+                      </html>
+                  `);
+                  return;
+              }
+              
+              if ('showSaveFilePicker' in window) {
+                  this.saveWithFileSystemAPI(doc);
+              } else {
+                  const a = document.createElement('a');
+                  a.href = doc.data;
+                  a.download = doc.name;
+                  a.click();
+              }
+          },
+
+          async saveWithFileSystemAPI(doc) {
+              try {
+                  const handle = await window.showSaveFilePicker({
+                      suggestedName: doc.name,
+                      types: [{
+                          description: 'File',
+                          accept: { '*/*': [`.${doc.type}`] }
+                      }]
+                  });
+                  const writable = await handle.createWritable();
+                  const response = await fetch(doc.data);
+                  const blob = await response.blob();
+                  await writable.write(blob);
+                  await writable.close();
+                  this.showToast('Файл сохранен');
+              } catch (err) {
+                  if (err.name !== 'AbortError') {
+                      console.error(err);
+                      const a = document.createElement('a');
+                      a.href = doc.data;
+                      a.download = doc.name;
+                      a.click();
+                  }
+              }
+          },
+
+          async deleteDocument(id) {
+              if (confirm('Удалить документ?')) {
+                  const transaction = this.db.transaction(['documents', 'vault'], 'readwrite');
+                  const docStore = transaction.objectStore('documents');
+                  const vaultStore = transaction.objectStore('vault');
+                  docStore.delete(id);
+                  vaultStore.delete(id);
+                  this.showToast('Документ удален');
+                  setTimeout(() => this.render(), 100);
+              }
+          },
+
+          async shareDocument(id) {
+              const transaction = this.db.transaction(['documents', 'vault'], 'readonly');
+              const docStore = transaction.objectStore('documents');
+              const vaultStore = transaction.objectStore('vault');
+              let req = docStore.get(id);
+              req.onsuccess = async () => {
+                  let doc = req.result;
+                  if (!doc) {
+                      const vaultReq = vaultStore.get(id);
+                      vaultReq.onsuccess = async () => {
+                          doc = vaultReq.result;
+                          if (doc) await this.performShare(doc);
+                      };
+                  } else {
+                      await this.performShare(doc);
+                  }
+              };
+          },
+
+          async performShare(doc) {
+              if (navigator.share) {
+                  try {
+                      const response = await fetch(doc.data);
+                      const blob = await response.blob();
+                      const file = new File([blob], doc.name, { type: blob.type });
+                      await navigator.share({
+                          files: [file],
+                          title: doc.name
+                      });
+                  } catch (err) {
+                      if (err.name !== 'AbortError') {
+                          this.showToast('Ошибка при отправке');
+                      }
+                  }
+              } else {
+                  this.showToast('Функция не поддерживается');
+              }
+          },
+
+          // Работа с папками
+          async createFolder() {
+              const input = document.getElementById('folderName');
+              const name = input.value.trim();
+              if (!name) {
+                  this.showToast('Введите название папки');
+                  return;
+              }
+              const folder = {
+                  id: Date.now() + '_' + Math.random(),
+                  name: name,
+                  created: Date.now()
+              };
+              const transaction = this.db.transaction(['folders'], 'readwrite');
+              const store = transaction.objectStore('folders');
+              await store.add(folder);
+              this.closeModal('newFolderModal');
+              input.value = '';
+              this.showToast('Папка создана');
+              this.render();
+          },
+
+          async getFolders() {
+              return new Promise((resolve, reject) => {
+                  const transaction = this.db.transaction(['folders'], 'readonly');
+                  const store = transaction.objectStore('folders');
+                  const request = store.getAll();
+                  request.onsuccess = () => resolve(request.result);
+                  request.onerror = () => reject(request.error);
+              });
+          },
+
+          openFolder(id) {
+              this.currentFolder = id;
+              this.render();
+          },
+
+          async deleteFolder(id) {
+              if (confirm('Удалить папку? Все документы из папки переместятся в главную.')) {
+                  // Перемещаем документы в главную
+                  const documents = await this.getDocuments();
+                  const folderDocs = documents.filter(d => d.folder === id);
+                  
+                  for (const doc of folderDocs) {
+                      doc.folder = null;
+                      const tx = this.db.transaction(['documents'], 'readwrite');
+                      await tx.objectStore('documents').put(doc);
+                  }
+                  
+                  // Удаляем папку
+                  const transaction = this.db.transaction(['folders'], 'readwrite');
+                  await transaction.objectStore('folders').delete(id);
+                  
+                  this.showToast('Папка удалена');
+                  this.render();
+              }
+          },
+
+          // Vault Operations
+          async openVault() {
+              if (!this.vaultUnlocked) {
+                  this.showPinModal();
+              } else {
+                  this.showVaultContents();
+              }
+          },
+
+          showPinModal() {
+              this.showModal('pinModal');
+              document.getElementById('pin1').focus();
+          },
+
+          handlePinInput(num) {
+              const current = document.getElementById(`pin${num}`);
+              const next = document.getElementById(`pin${num + 1}`);
+              if (current.value && next) {
+                  next.focus();
+              }
+              if (num === 4) {
+                  const pin = this.getPinValue();
+                  if (pin === '1234') {
+                      this.emergencyWipe();
+                  }
+              }
+          },
+
+          getPinValue() {
+              let pin = '';
+              for (let i = 1; i <= 4; i++) {
+                  pin += document.getElementById(`pin${i}`).value;
+              }
+              return pin;
+          },
+
+          async checkPin() {
+              const pin = this.getPinValue();
+              const transaction = this.db.transaction(['settings'], 'readonly');
+              const store = transaction.objectStore('settings');
+              const request = store.get('vaultPin');
+              request.onsuccess = () => {
+                  const storedPin = request.result?.value;
+                  if (!storedPin || pin === storedPin) {
+                      this.vaultUnlocked = true;
+                      if (!storedPin && pin) {
+                          this.savePinSetting(pin);
+                      }
+                      this.closeModal('pinModal');
+                      this.showToast('Сейф открыт');
+                      setTimeout(() => {
+                          this.vaultUnlocked = false;
+                          this.showToast('Сейф заблокирован');
+                          this.render();
+                      }, 60000);
+                      this.showVaultContents();
+                  } else {
+                      this.showToast('Неверный PIN');
+                      this.clearPinInputs();
+                  }
+              };
+          },
+
+          async savePinSetting(pin) {
+              const transaction = this.db.transaction(['settings'], 'readwrite');
+              const store = transaction.objectStore('settings');
+              await store.put({ key: 'vaultPin', value: pin });
+          },
+
+          clearPinInputs() {
+              for (let i = 1; i <= 4; i++) {
+                  document.getElementById(`pin${i}`).value = '';
+              }
+              document.getElementById('pin1').focus();
+          },
+
+          goHome() {
+              this.currentFolder = null;
+              this.render();
+          },
+
+          showVaultContents() {
+              this.currentFolder = 'vault';
+              this.render();
+          },
+
+          // Export / Import
+          async exportData() {
+              try {
+                  const folders = await this.getFolders();
+                  const documents = await this.getDocuments();
+                  const vaultDocs = await this.getVaultDocuments();
+                  const settings = await this.getSettings();
+                  const data = {
+                      version: 1,
+                      exported: new Date().toISOString(),
+                      folders: folders,
+                      documents: documents,
+                      vault: vaultDocs, // Добавлен экспорт документов из сейфа
+                      settings: settings
+                  };
+                  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `vault_backup_${new Date().toISOString().split('T')[0]}.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  this.showToast('Данные экспортированы');
+              } catch (error) {
+                  this.showToast('Ошибка экспорта');
+                  console.error(error);
+              }
+          },
+
+          async getSettings() {
+              return new Promise((resolve, reject) => {
+                  const transaction = this.db.transaction(['settings'], 'readonly');
+                  const store = transaction.objectStore('settings');
+                  const request = store.getAll();
+                  request.onsuccess = () => resolve(request.result);
+                  request.onerror = () => reject(request.error);
+              });
+          },
+
+          showImportModal() {
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = '.json';
+              input.onchange = async (e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = async (e) => {
+                      try {
+                          const data = JSON.parse(e.target.result);
+                          await this.importData(data);
+                          this.showToast('Данные импортированы');
+                          this.render();
+                      } catch (error) {
+                          this.showToast('Ошибка импорта');
+                          console.error(error);
+                      }
+                  };
+                  reader.readAsText(file);
+              };
+              input.click();
+              this.closeModal('menuModal');
+          },
+
+          async importData(data) {
+              await this.clearAllData();
+              if (data.folders) {
+                  const folderTx = this.db.transaction(['folders'], 'readwrite');
+                  const folderStore = folderTx.objectStore('folders');
+                  for (const folder of data.folders) {
+                      await folderStore.add(folder);
+                  }
+              }
+              if (data.documents) {
+                  const docTx = this.db.transaction(['documents'], 'readwrite');
+                  const docStore = docTx.objectStore('documents');
+                  for (const doc of data.documents) {
+                      await docStore.add(doc);
+                  }
+              }
+              if (data.vault) {
+                  const vaultTx = this.db.transaction(['vault'], 'readwrite');
+                  const vaultStore = vaultTx.objectStore('vault');
+                  for (const doc of data.vault) {
+                      await vaultStore.add(doc);
+                  }
+              }
+              if (data.settings) {
+                  const settingsTx = this.db.transaction(['settings'], 'readwrite');
+                  const settingsStore = settingsTx.objectStore('settings');
+                  for (const setting of data.settings) {
+                      await settingsStore.put(setting);
+                  }
+              }
+          },
+
+          showClearDataModal() {
+              if (confirm('Удалить все данные? Это действие необратимо!')) {
+                  this.clearAllData();
+                  this.showToast('Все данные удалены');
+                  this.render();
+              }
+              this.closeModal('menuModal');
+          },
+
+          async clearAllData() {
+              const stores = ['documents', 'folders', 'vault', 'settings'];
+              for (const storeName of stores) {
+                  const transaction = this.db.transaction([storeName], 'readwrite');
+                  const store = transaction.objectStore(storeName);
+                  await store.clear();
+              }
+              this.currentFolder = null;
+              this.vaultUnlocked = false;
+          },
+
+          // Экстренная очистка
+          setupEmergencyWipe() {
+              // Реализовано в handlePinInput
+          },
+          emergencyWipe() {
+              this.clearAllData();
+              this.closeModal('pinModal');
+              this.showToast('Экстренная очистка выполнена');
+              this.render();
+          },
+
+          // Контекстное меню
+          setupContextMenu() {
+              document.addEventListener('click', (e) => {
+                  const menu = document.getElementById('contextMenu');
+                  if (!menu.contains(e.target)) {
+                      menu.classList.remove('active');
+                  }
+              });
+          },
+
+          showDocumentMenu(event, id) {
+              event.preventDefault();
+              this.contextMenuTarget = id;
+              const menu = document.getElementById('contextMenu');
+              menu.style.left = event.pageX + 'px';
+              menu.style.top = event.pageY + 'px';
+              menu.classList.add('active');
+          },
+
+          showFolderMenu(event, id) {
+              event.preventDefault();
+              // Можно добавить отдельное меню для папок
+          },
+
+          contextMenuAction(action) {
+              const id = this.contextMenuTarget;
+              const menu = document.getElementById('contextMenu');
+              menu.classList.remove('active');
+              
+              switch(action) {
+                  case 'open':
+                      this.openDocument(id);
+                      break;
+                  case 'download':
+                      this.downloadDocument(id);
+                      break;
+                  case 'share':
+                      this.shareDocument(id);
+                      break;
+                  case 'delete':
+                      this.deleteDocument(id);
+                      break;
+              }
+          },
+
+          // UI Helpers
+          showModal(id) {
+              document.getElementById(id).classList.add('active');
+          },
+          closeModal(id) {
+              document.getElementById(id).classList.remove('active');
+          },
+          showMenu() {
+              this.showModal('menuModal');
+          },
+          showUploadModal() {
+              this.showModal('uploadModal');
+              document.getElementById('fileInput').value = '';
+          },
+          showNewFolderModal() {
+              this.showModal('newFolderModal');
+              document.getElementById('folderName').value = '';
+          },
+          showAbout() {
+              alert('Secure Vault v1.0\n\nЗащищенное хранилище документов\n\n© 2024');
+              this.closeModal('menuModal');
+          },
+          showToast(message) {
+              const toast = document.getElementById('toast');
+              toast.textContent = message;
+              toast.classList.add('show');
+              setTimeout(() => {
+                  toast.classList.remove('show');
+              }, 3000);
+          },
+          updateFolderSelector() {
+              const select = document.getElementById('folderSelect');
+              this.getFolders().then(folders => {
+                  let options = '<option value="">Главная</option><option value="vault">🔐 Сейф</option>';
+                  folders.forEach(folder => {
+                      options += `<option value="${folder.id}">${folder.name}</option>`;
+                  });
+                  select.innerHTML = options;
+              });
+          },
+          getFileIcon(type) {
+              const icons = {
+                  pdf: '📄',
+                  doc: '📝',
+                  docx: '📝',
+                  xls: '📊',
+                  xlsx: '📊',
+                  txt: '📃',
+                  jpg: '🖼️',
+                  jpeg: '🖼️',
+                  png: '🖼️',
+                  gif: '🖼️'
+              };
+              return icons[type] || '📎';
+          },
+          getFileType(filename) {
+              return filename.split('.').pop().toLowerCase();
+          },
+          formatFileSize(bytes) {
+              if (bytes === 0) return '0 Bytes';
+              const k = 1024;
+              const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+              const i = Math.floor(Math.log(bytes) / Math.log(k));
+              return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+          },
+
+          sortDocuments() {
+              this.sortBy = this.sortBy === 'date' ? 'type' : 'date';
+              this.showToast(`Сортировка по ${this.sortBy === 'date' ? 'дате' : 'типу'}`);
+              this.render();
+          }
+      };
+
+      document.addEventListener('DOMContentLoaded', () => {
+          app.init();
+      });
+
+      // Предотвращаем зум при двойном тапе
+      let lastTouchEnd = 0;
+      document.addEventListener('touchend', (e) => {
+          const now = Date.now();
+          if (now - lastTouchEnd <= 300) {
+              e.preventDefault();
+          }
+          lastTouchEnd = now;
+      }, false);
+  </script>
+</body>
+</html>
